@@ -2,7 +2,7 @@
 // Vercel 서버리스 함수 — Google Gemini API에 안전하게 요청을 전달합니다.
 // API 키는 이 파일 안에서만 쓰이고 Vercel 서버에서만 실행되므로,
 // 사용자 브라우저에는 절대 노출되지 않습니다.
-
+ 
 export default async function handler(req, res) {
   // 같은 사이트의 페이지가 호출하도록 허용
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -12,26 +12,26 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST 요청만 허용됩니다." });
   }
-
+ 
   try {
     const { prompt } = req.body || {};
     if (!prompt || typeof prompt !== "string") {
       return res.status(400).json({ error: "prompt가 필요합니다." });
     }
-
+ 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({
         error: "서버에 API 키가 설정되지 않았습니다. (GEMINI_API_KEY)"
       });
     }
-
+ 
     // 모델 이름은 환경 변수로 둬서, 모델이 바뀌어도 코드 수정 없이 대응 가능
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
     const url =
       "https://generativelanguage.googleapis.com/v1beta/models/" +
       model + ":generateContent?key=" + apiKey;
-
+ 
     const geminiRes = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         }
       })
     });
-
+ 
     if (!geminiRes.ok) {
       let detail = "";
       try {
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
         error: "생성 요청에 실패했습니다. " + detail
       });
     }
-
+ 
     const data = await geminiRes.json();
     const text =
       data &&
@@ -70,13 +70,13 @@ export default async function handler(req, res) {
       data.candidates[0].content.parts &&
       data.candidates[0].content.parts[0] &&
       data.candidates[0].content.parts[0].text;
-
+ 
     if (!text) {
       return res.status(502).json({
         error: "응답을 받지 못했습니다. 다시 시도해 주세요."
       });
     }
-
+ 
     // 생성된 JSON 텍스트를 그대로 전달 (프론트엔드에서 파싱)
     return res.status(200).json({ result: text });
   } catch (err) {
