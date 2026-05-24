@@ -349,10 +349,14 @@
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({prompt:prompt})
     });
-    const data=await res.json();
+    const raw=await res.text();
+    let data;
+    try{ data=JSON.parse(raw); }
+    catch(_){ throw new Error("서버 응답을 읽지 못했습니다. 잠시 후 다시 시도해 주세요."); }
     if(!res.ok)throw new Error(data.error||("요청 실패 ("+res.status+")"));
     let clean=String(data.result||"").replace(/```json/gi,"").replace(/```/g,"").trim();
-    return JSON.parse(clean);
+    try{ return JSON.parse(clean); }
+    catch(_){ throw new Error("생성 결과 형식 오류입니다. 다시 시도해 주세요."); }
   }
 
   function showStatus(id,msg,error){

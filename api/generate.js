@@ -2,85 +2,128 @@
 // Vercel 서버리스 함수 — Google Gemini API에 안전하게 요청을 전달합니다.
 // API 키는 이 파일 안에서만 쓰이고 Vercel 서버에서만 실행되므로,
 // 사용자 브라우저에는 절대 노출되지 않습니다.
- 
+
+// 시도할 모델 목록 — 앞에서부터 차례로 시도하고, 되는 것을 사용합니다.
+const MODEL_CANDIDATES = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-flash-latest",
+  "gemini-1.5-flash"
+];
+
+async function callModel(model, apiKey, prompt) {
+  const url =
+    "https://generativelanguage.googleapis.com/v1beta/models/" +
+    model + ":generateContent?key=" + apiKey;
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.8,
+        maxOutputTokens: 2048,
+        responseMimeType: "application/json"
+      }
+    })
+  });
+
+  let body = null;
+  try { body = await r.json(); } catch (_) { body = null; }
+  return { status: r.status, ok: r.ok, body: body };
+}
+
 export default async function handler(req, res) {
-  // 같은 사이트의 페이지가 호출하도록 허용
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "POST 요청만 허용됩니다." });
-  }
- 
+
   try {
-    const { prompt } = req.body || {};
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "POST 요청만 허용됩니다." });
+    }
+
+    let payload = req.body;
+    if (typeof payload === "string") {
+      try { payload = JSON.parse(payload); } catch (_) { payload = {}; }
+    }
+    const prompt = payload && payload.prompt;
     if (!prompt || typeof prompt !== "string") {
       return res.status(400).json({ error: "prompt가 필요합니다." });
     }
- 
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({
         error: "서버에 API 키가 설정되지 않았습니다. (GEMINI_API_KEY)"
       });
     }
- 
-    // 모델 이름은 환경 변수로 둬서, 모델이 바뀌어도 코드 수정 없이 대응 가능
-    const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
-    const url =
-      "https://generativelanguage.googleapis.com/v1beta/models/" +
-      model + ":generateContent?key=" + apiKey;
- 
-    const geminiRes = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 2048,
-          responseMimeType: "application/json"
-        }
-      })
-    });
- 
-    if (!geminiRes.ok) {
-      let detail = "";
+
+    const models = [];
+    if (process.env.GEMINI_MODEL) models.push(process.env.GEMINI_MODEL);
+    for (const m of MODEL_CANDIDATES) {
+      if (!models.includes(m)) models.push(m);
+    }
+
+    let rateLimited = false;
+    let lastError = "";
+
+    for (const model of models) {
+      let attempt;
       try {
-        const e = await geminiRes.json();
-        detail = e.error && e.error.message ? e.error.message : "";
-      } catch (_) {}
-      if (geminiRes.status === 429) {
-        return res.status(429).json({
-          error: "오늘 무료 사용량을 모두 사용했습니다. 내일 다시 시도해 주세요."
-        });
+        attempt = await callModel(model, apiKey, prompt);
+      } catch (e) {
+        lastError = "네트워크 오류: " + (e && e.message ? e.message : "");
+        continue;
       }
-      return res.status(geminiRes.status).json({
-        error: "생성 요청에 실패했습니다. " + detail
+
+      if (attempt.status === 429) {
+        rateLimited = true;
+        lastError = "사용량 한도(429)";
+        continue;
+      }
+
+      if (!attempt.ok) {
+        const msg =
+          attempt.body && attempt.body.error && attempt.body.error.message
+            ? attempt.body.error.message
+            : "HTTP " + attempt.status;
+        lastError = msg;
+        continue;
+      }
+
+      const data = attempt.body;
+      const text =
+        data &&
+        data.candidates &&
+        data.candidates[0] &&
+        data.candidates[0].content &&
+        data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text;
+
+      if (text) {
+        return res.status(200).json({ result: text });
+      }
+
+      lastError = "빈 응답";
+      continue;
+    }
+
+    if (rateLimited) {
+      return res.status(429).json({
+        error: "오늘 무료 사용량을 모두 사용했습니다. 잠시 후 다시 시도해 주세요."
       });
     }
- 
-    const data = await geminiRes.json();
-    const text =
-      data &&
-      data.candidates &&
-      data.candidates[0] &&
-      data.candidates[0].content &&
-      data.candidates[0].content.parts &&
-      data.candidates[0].content.parts[0] &&
-      data.candidates[0].content.parts[0].text;
- 
-    if (!text) {
-      return res.status(502).json({
-        error: "응답을 받지 못했습니다. 다시 시도해 주세요."
-      });
-    }
- 
-    // 생성된 JSON 텍스트를 그대로 전달 (프론트엔드에서 파싱)
-    return res.status(200).json({ result: text });
+    return res.status(502).json({
+      error: "생성에 실패했습니다. 다시 시도해 주세요. (" + lastError + ")"
+    });
   } catch (err) {
     console.error("Handler error:", err);
-    return res.status(500).json({ error: "서버 오류가 발생했습니다." });
+    return res.status(500).json({
+      error: "서버 오류가 발생했습니다. (" + (err && err.message ? err.message : "") + ")"
+    });
   }
 }
