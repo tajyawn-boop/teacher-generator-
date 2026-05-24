@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수련회 교사 생성기</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#0c0d10;
+    --bg-2:#131418;
+    --panel:#16181d;
+    --panel-2:#1c1f26;
+    --line:#2a2d35;
+    --line-soft:#22242b;
+    --text:#e8e9ec;
+    --text-dim:#9aa0ab;
+    --text-faint:#6b7280;
+    --accent:#5cc8e8;
+    --accent-deep:#3a9cbd;
+    --accent-glow:rgba(92,200,232,0.14);
+    --warn:#e8845c;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Pretendard',sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* header */
+  header{
+    background:var(--bg-2);border-bottom:1px solid var(--line);
+    padding:22px 28px;
+  }
+  .h-kicker{
+    font-size:.62rem;letter-spacing:.3em;color:var(--accent);
+    text-transform:uppercase;font-weight:700;
+  }
+  .h-title{font-weight:800;font-size:1.34rem;margin-top:5px;}
+  .h-sub{font-size:.86rem;color:var(--text-faint);margin-top:3px;}
+
+  /* tool tabs */
+  .tooltabs{
+    display:flex;gap:8px;padding:16px 28px 0;
+    background:var(--bg-2);border-bottom:1px solid var(--line);
+  }
+  .ttab{
+    background:none;border:none;border-bottom:2px solid transparent;
+    color:var(--text-dim);font-family:inherit;font-size:.92rem;
+    padding:10px 16px;cursor:pointer;transition:.15s;font-weight:500;
+  }
+  .ttab:hover{color:var(--text);}
+  .ttab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;}
+
+  main{max-width:880px;margin:0 auto;padding:34px 24px 70px;}
+  .tool{display:none;}
+  .tool.active{display:block;animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+  .intro{font-size:.92rem;color:var(--text-dim);margin-bottom:22px;}
+
+  /* form */
+  .form-card{
+    background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:14px;padding:26px 28px;
+  }
+  @media(max-width:560px){.form-card{padding:20px 18px;}}
+  .field{margin-bottom:18px;}
+  .field:last-of-type{margin-bottom:22px;}
+  .field label{
+    display:block;font-size:.84rem;font-weight:700;
+    margin-bottom:7px;color:var(--text);
+  }
+  .field label .opt{color:var(--text-faint);font-weight:400;font-size:.78rem;}
+  .field input[type=text],.field textarea,.field select{
+    width:100%;background:var(--bg-2);border:1px solid var(--line);
+    border-radius:9px;padding:11px 13px;color:var(--text);
+    font-family:inherit;font-size:.92rem;transition:border-color .15s;
+  }
+  .field textarea{resize:vertical;min-height:74px;}
+  .field input:focus,.field textarea:focus,.field select:focus{
+    outline:none;border-color:var(--accent-deep);
+  }
+  .field .hint{font-size:.76rem;color:var(--text-faint);margin-top:5px;}
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{
+    background:var(--bg-2);border:1px solid var(--line);
+    color:var(--text-dim);font-family:inherit;font-size:.84rem;
+    padding:8px 14px;border-radius:20px;cursor:pointer;transition:.15s;
+  }
+  .chip:hover{border-color:var(--accent-deep);color:var(--text);}
+  .chip.active{background:var(--accent);border-color:var(--accent);
+    color:var(--bg);font-weight:700;}
+
+  .gen-btn{
+    width:100%;background:var(--accent);color:var(--bg);
+    border:none;border-radius:10px;padding:14px;font-family:inherit;
+    font-size:.98rem;font-weight:800;cursor:pointer;transition:.15s;
+  }
+  .gen-btn:hover{background:#74d4f0;}
+  .gen-btn:disabled{background:var(--panel-2);color:var(--text-faint);cursor:not-allowed;}
+
+  /* result */
+  .result{margin-top:24px;display:none;}
+  .result.show{display:block;animation:fade .3s ease;}
+  .result-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;margin-bottom:14px;
+  }
+  .result-head h3{font-weight:800;font-size:1.1rem;}
+  .copy-btn{
+    background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text-dim);font-family:inherit;font-size:.8rem;
+    padding:7px 14px;border-radius:8px;cursor:pointer;transition:.15s;
+  }
+  .copy-btn:hover{border-color:var(--accent-deep);color:var(--text);}
+  .result-body{
+    background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:14px;padding:24px 26px;
+  }
+  @media(max-width:560px){.result-body{padding:18px 16px;}}
+
+  /* status */
+  .status{
+    display:none;align-items:center;gap:12px;margin-top:20px;
+    background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:12px;padding:16px 18px;color:var(--text-dim);
+    font-size:.9rem;
+  }
+  .status.show{display:flex;}
+  .spinner{
+    width:18px;height:18px;border:2px solid var(--line);
+    border-top-color:var(--accent);border-radius:50%;
+    animation:spin .7s linear infinite;flex-shrink:0;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .status.error{border-color:var(--warn);color:var(--warn);}
+
+  /* generated content styling */
+  .gen-section{margin-bottom:24px;}
+  .gen-section:last-child{margin-bottom:0;}
+  .gen-section h4{
+    font-weight:800;font-size:1.04rem;color:var(--accent);
+    margin-bottom:10px;padding-bottom:6px;
+    border-bottom:1px solid var(--line-soft);
+    display:flex;align-items:center;gap:9px;
+  }
+  .gen-section h4 .gs-num{
+    font-size:.76rem;background:var(--accent-glow);color:var(--accent);
+    width:22px;height:22px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .gen-section .lbl{
+    font-size:.82rem;color:var(--text-faint);font-weight:700;
+    margin:12px 0 4px;
+  }
+  .gen-section p{font-size:.92rem;color:var(--text-dim);margin-bottom:8px;}
+  .gen-section .verse{
+    font-size:.88rem;color:var(--text-dim);font-weight:500;
+    border-left:2px solid var(--accent-deep);padding-left:12px;margin:8px 0;
+  }
+  .qlist{list-style:none;counter-reset:q;}
+  .qlist li{
+    counter-increment:q;position:relative;padding:9px 0 9px 34px;
+    font-size:.93rem;color:var(--text-dim);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .qlist li:last-child{border-bottom:none;}
+  .qlist li::before{
+    content:counter(q);position:absolute;left:0;top:9px;
+    width:24px;height:24px;background:var(--accent-glow);color:var(--accent);
+    border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:.76rem;font-weight:800;
+  }
+  .qcat{
+    font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent);font-weight:800;margin:16px 0 4px;
+  }
+  .flowlist{list-style:none;margin-top:4px;}
+  .flowlist li{
+    font-size:.9rem;padding:5px 0 5px 20px;position:relative;
+    color:var(--text-dim);
+  }
+  .flowlist li::before{
+    content:"";position:absolute;left:4px;top:13px;width:6px;height:6px;
+    border-radius:50%;background:var(--accent-deep);
+  }
+  .tline{
+    display:flex;gap:12px;padding:7px 0;font-size:.9rem;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .tline:last-child{border-bottom:none;}
+  .tline .tt{font-weight:800;color:var(--accent);min-width:54px;}
+  .tline .tc{color:var(--text-dim);}
+
+  .disclaimer{
+    font-size:.78rem;color:var(--text-faint);margin-top:18px;
+    padding-top:14px;border-top:1px solid var(--line-soft);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-kicker">교사용 도구</div>
+  <div class="h-title">수련회 교사 생성기</div>
+  <div class="h-sub">소그룹 질문과 커리큘럼을 AI로 생성합니다</div>
+</header>
+
+<div class="tooltabs">
+  <button class="ttab active" data-tool="questions">소그룹 질문 생성기</button>
+  <button class="ttab" data-tool="curriculum">커리큘럼 생성기</button>
+</div>
+
+<main>
+
+  <!-- ============ 소그룹 질문 생성기 ============ -->
+  <section class="tool active" id="questions">
+    <p class="intro">
+      수련회 주제와 본문 말씀, 대상 학년을 입력하면 소그룹 나눔 질문을 만들어 드립니다. 밸런스게임형·교리형·삶 적용형 세 가지 형식으로 생성됩니다.
+    </p>
+    <div class="form-card">
+      <div class="field">
+        <label>수련회 / 세션 주제</label>
+        <input type="text" id="q_theme" placeholder="예: 하나님 나라, 하나님의 방식으로">
+      </div>
+      <div class="field">
+        <label>본문 말씀 <span class="opt">(선택)</span></label>
+        <input type="text" id="q_verse" placeholder="예: 로마서 12:1-2 / 다니엘 1장">
+        <div class="hint">비워두면 주제에 맞는 본문을 AI가 함께 제안합니다.</div>
+      </div>
+      <div class="field">
+        <label>대상 학년</label>
+        <div class="chip-row" id="q_grade">
+          <button class="chip active" data-val="중고등부 전체">중고등부 전체</button>
+          <button class="chip" data-val="중등부">중등부</button>
+          <button class="chip" data-val="고등부">고등부</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>특별히 다루고 싶은 내용 <span class="opt">(선택)</span></label>
+        <textarea id="q_focus" placeholder="예: 학교에서 느끼는 또래 압력, 진로 고민, SNS 비교 등"></textarea>
+      </div>
+      <button class="gen-btn" id="q_gen">소그룹 질문 생성하기</button>
+    </div>
+
+    <div class="status" id="q_status">
+      <div class="spinner"></div>
+      <span id="q_status_text">질문을 생성하고 있습니다...</span>
+    </div>
+
+    <div class="result" id="q_result">
+      <div class="result-head">
+        <h3>생성된 소그룹 질문</h3>
+        <button class="copy-btn" data-copy="q_result_body">텍스트 복사</button>
+      </div>
+      <div class="result-body" id="q_result_body"></div>
+    </div>
+  </section>
+
+  <!-- ============ 커리큘럼 생성기 ============ -->
+  <section class="tool" id="curriculum">
+    <p class="intro">
+      수련회 주제와 기간을 입력하면 교리 강의 개요와 저녁 집회 순서를 만들어 드립니다. 개혁주의 교리의 흐름에 따라 구성됩니다.
+    </p>
+    <div class="form-card">
+      <div class="field">
+        <label>수련회 주제</label>
+        <input type="text" id="c_theme" placeholder="예: 하나님 나라, 하나님의 방식으로">
+      </div>
+      <div class="field">
+        <label>핵심 말씀 <span class="opt">(선택)</span></label>
+        <input type="text" id="c_verse" placeholder="예: 로마서 12:2">
+      </div>
+      <div class="field">
+        <label>수련회 기간</label>
+        <div class="chip-row" id="c_days">
+          <button class="chip active" data-val="2박 3일">2박 3일</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>생성할 내용</label>
+        <div class="chip-row" id="c_scope">
+          <button class="chip active" data-val="강의+집회">강의 + 저녁 집회</button>
+          <button class="chip" data-val="강의만">교리 강의만</button>
+          <button class="chip" data-val="집회만">저녁 집회만</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>강조하고 싶은 교리나 메시지 <span class="opt">(선택)</span></label>
+        <textarea id="c_focus" placeholder="예: 하나님의 주권, 십자가 복음, 성화의 삶 등"></textarea>
+      </div>
+      <button class="gen-btn" id="c_gen">커리큘럼 생성하기</button>
+    </div>
+
+    <div class="status" id="c_status">
+      <div class="spinner"></div>
+      <span id="c_status_text">커리큘럼을 생성하고 있습니다...</span>
+    </div>
+
+    <div class="result" id="c_result">
+      <div class="result-head">
+        <h3>생성된 커리큘럼</h3>
+        <button class="copy-btn" data-copy="c_result_body">텍스트 복사</button>
+      </div>
+      <div class="result-body" id="c_result_body"></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  /* ---------- tab switching ---------- */
+  const ttabs=document.querySelectorAll('.ttab');
+  const tools=document.querySelectorAll('.tool');
+  ttabs.forEach(t=>{
+    t.addEventListener('click',()=>{
+      ttabs.forEach(x=>x.classList.toggle('active',x===t));
+      tools.forEach(x=>x.classList.toggle('active',x.id===t.dataset.tool));
+    });
+  });
+
+  /* ---------- chip groups ---------- */
+  document.querySelectorAll('.chip-row').forEach(row=>{
+    row.addEventListener('click',e=>{
+      const chip=e.target.closest('.chip');
+      if(!chip)return;
+      row.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c===chip));
+    });
+  });
+  function chipVal(id){
+    const a=document.querySelector('#'+id+' .chip.active');
+    return a?a.dataset.val:'';
+  }
+
+  /* ---------- escape helper ---------- */
+  function esc(s){
+    return String(s==null?'':s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ---------- Claude API call ---------- */
+  // 백엔드(/api/generate)를 호출합니다. API 키는 서버에만 있습니다.
+  const API_URL="/api/generate";
+  async function callClaude(prompt){
+    const res=await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({prompt:prompt})
+    });
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||("요청 실패 ("+res.status+")"));
+    let clean=String(data.result||"").replace(/```json/gi,"").replace(/```/g,"").trim();
+    return JSON.parse(clean);
+  }
+
+  function showStatus(id,msg,error){
+    const el=document.getElementById(id);
+    el.classList.add('show');
+    el.classList.toggle('error',!!error);
+    el.querySelector('span').textContent=msg;
+    el.querySelector('.spinner').style.display=error?'none':'block';
+  }
+  function hideStatus(id){document.getElementById(id).classList.remove('show');}
+
+  /* ================= 소그룹 질문 생성기 ================= */
+  document.getElementById('q_gen').addEventListener('click',async()=>{
+    const theme=document.getElementById('q_theme').value.trim();
+    if(!theme){alert('수련회 / 세션 주제를 입력해 주세요.');return;}
+    const verse=document.getElementById('q_verse').value.trim();
+    const grade=chipVal('q_grade');
+    const focus=document.getElementById('q_focus').value.trim();
+
+    const btn=document.getElementById('q_gen');
+    btn.disabled=true;
+    document.getElementById('q_result').classList.remove('show');
+    showStatus('q_status','질문을 생성하고 있습니다...',false);
+
+    const prompt=`당신은 한국 개혁주의 교회의 중고등부 수련회 소그룹 나눔 질문을 만드는 전문가입니다.
+다음 조건으로 소그룹 나눔 질문을 만들어 주세요.
+
+주제: ${theme}
+본문 말씀: ${verse||'(주제에 맞게 적절한 본문을 직접 선정)'}
+대상: ${grade}
+특별히 다룰 내용: ${focus||'(없음)'}
+
+다음 JSON 형식으로만 응답하세요. 다른 텍스트나 마크다운 없이 순수 JSON만 출력하세요.
+{
+  "verse": "사용한 본문 말씀 (장절)",
+  "verse_text": "본문의 핵심 구절 한 문장",
+  "balance": ["밸런스게임형 질문 3개 - 두 선택지 중 고르고 이유를 나누는 형식"],
+  "doctrine": ["교리형 질문 3개 - 본문과 교리를 깊이 생각하게 하는 질문"],
+  "life": ["삶 적용형 질문 4개 - 학생의 실제 일상에 적용하는 질문"]
+}
+질문은 ${grade} 학생들이 이해하기 쉬운 따뜻한 한국어로, 정답을 강요하지 않고 스스로 생각하도록 여는 형식으로 만들어 주세요.`;
+
+    try{
+      const d=await callClaude(prompt);
+      let html='';
+      html+='<div class="gen-section">';
+      html+='<p class="lbl">본문 말씀</p>';
+      html+='<p class="verse">'+esc(d.verse_text||'')+' ('+esc(d.verse||'')+')</p>';
+      html+='</div>';
+      const groups=[
+        ['밸런스게임형',d.balance],
+        ['교리형',d.doctrine],
+        ['삶 적용형',d.life]
+      ];
+      groups.forEach(g=>{
+        if(!g[1]||!g[1].length)return;
+        html+='<div class="gen-section">';
+        html+='<p class="qcat">'+esc(g[0])+'</p>';
+        html+='<ul class="qlist">';
+        g[1].forEach(q=>html+='<li>'+esc(q)+'</li>');
+        html+='</ul></div>';
+      });
+      html+='<p class="disclaimer">AI가 생성한 내용입니다. 실제 사용 전 담당 교역자가 검토하고 다듬어 주세요.</p>';
+      document.getElementById('q_result_body').innerHTML=html;
+      document.getElementById('q_result').classList.add('show');
+      hideStatus('q_status');
+    }catch(err){
+      showStatus('q_status','생성 중 오류가 발생했습니다. 다시 시도해 주세요. ('+err.message+')',true);
+    }finally{
+      btn.disabled=false;
+    }
+  });
+
+  /* ================= 커리큘럼 생성기 ================= */
+  document.getElementById('c_gen').addEventListener('click',async()=>{
+    const theme=document.getElementById('c_theme').value.trim();
+    if(!theme){alert('수련회 주제를 입력해 주세요.');return;}
+    const verse=document.getElementById('c_verse').value.trim();
+    const days=chipVal('c_days');
+    const scope=chipVal('c_scope');
+    const focus=document.getElementById('c_focus').value.trim();
+
+    const btn=document.getElementById('c_gen');
+    btn.disabled=true;
+    document.getElementById('c_result').classList.remove('show');
+    showStatus('c_status','커리큘럼을 생성하고 있습니다...',false);
+
+    const prompt=`당신은 한국 개혁주의 교회의 중고등부 수련회 커리큘럼을 설계하는 전문가입니다.
+다음 조건으로 수련회 커리큘럼을 만들어 주세요.
+
+수련회 주제: ${theme}
+핵심 말씀: ${verse||'(주제에 맞게 직접 선정)'}
+기간: ${days}
+생성 범위: ${scope}
+강조할 교리/메시지: ${focus||'(주제에 맞게 균형있게)'}
+
+개혁주의 교리(하나님의 주권, 전적 타락, 은혜로운 구속, 성화)의 흐름을 따라 구성하세요.
+다음 JSON 형식으로만 응답하세요. 다른 텍스트나 마크다운 없이 순수 JSON만 출력하세요.
+{
+  "overview": "수련회 전체 흐름을 2-3문장으로 요약",
+  "lectures": [
+    {"title":"강의 제목","verse":"핵심 구절(장절)","doctrine":"핵심 교리","goal":"교육 목표 한 문장","flow":["강의 흐름 3-4단계"]}
+  ],
+  "worship": [
+    {"title":"집회 제목","verse":"본문(장절)","message":"핵심 메시지 한 문장","order":[{"time":"20분","content":"순서 내용"}]}
+  ]
+}
+${scope==='강의만'?'worship은 빈 배열로 두세요.':''}
+${scope==='집회만'?'lectures는 빈 배열로 두세요.':''}
+강의는 ${days} 기간에 맞는 개수로, 저녁 집회는 매일 저녁 1회 기준으로 만들어 주세요. 따뜻하고 명확한 한국어로 작성하세요.`;
+
+    try{
+      const d=await callClaude(prompt);
+      let html='';
+      if(d.overview){
+        html+='<div class="gen-section"><p class="lbl">전체 흐름</p><p>'+esc(d.overview)+'</p></div>';
+      }
+      if(d.lectures&&d.lectures.length){
+        html+='<div class="gen-section"><h4><span class="gs-num">강</span>교리 강의</h4>';
+        d.lectures.forEach((l,i)=>{
+          html+='<div style="margin-bottom:16px;">';
+          html+='<p class="lbl">강의 '+(i+1)+'</p>';
+          html+='<p style="font-weight:800;color:var(--text);">'+esc(l.title)+'</p>';
+          if(l.verse)html+='<p class="verse">'+esc(l.verse)+'</p>';
+          if(l.doctrine)html+='<p style="font-size:.88rem;"><b style="color:var(--accent);">핵심 교리</b> '+esc(l.doctrine)+'</p>';
+          if(l.goal)html+='<p style="font-size:.88rem;"><b style="color:var(--accent);">교육 목표</b> '+esc(l.goal)+'</p>';
+          if(l.flow&&l.flow.length){
+            html+='<ul class="flowlist">';
+            l.flow.forEach(f=>html+='<li>'+esc(f)+'</li>');
+            html+='</ul>';
+          }
+          html+='</div>';
+        });
+        html+='</div>';
+      }
+      if(d.worship&&d.worship.length){
+        html+='<div class="gen-section"><h4><span class="gs-num">집</span>저녁 집회</h4>';
+        d.worship.forEach((w,i)=>{
+          html+='<div style="margin-bottom:16px;">';
+          html+='<p class="lbl">집회 '+(i+1)+'</p>';
+          html+='<p style="font-weight:800;color:var(--text);">'+esc(w.title)+'</p>';
+          if(w.verse)html+='<p class="verse">'+esc(w.verse)+'</p>';
+          if(w.message)html+='<p style="font-size:.88rem;">'+esc(w.message)+'</p>';
+          if(w.order&&w.order.length){
+            w.order.forEach(o=>{
+              html+='<div class="tline"><span class="tt">'+esc(o.time)+'</span><span class="tc">'+esc(o.content)+'</span></div>';
+            });
+          }
+          html+='</div>';
+        });
+        html+='</div>';
+      }
+      html+='<p class="disclaimer">AI가 생성한 내용입니다. 실제 사용 전 담당 교역자가 검토하고 다듬어 주세요.</p>';
+      document.getElementById('c_result_body').innerHTML=html;
+      document.getElementById('c_result').classList.add('show');
+      hideStatus('c_status');
+    }catch(err){
+      showStatus('c_status','생성 중 오류가 발생했습니다. 다시 시도해 주세요. ('+err.message+')',true);
+    }finally{
+      btn.disabled=false;
+    }
+  });
+
+  /* ---------- copy buttons ---------- */
+  document.querySelectorAll('.copy-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const el=document.getElementById(btn.dataset.copy);
+      const text=el.innerText;
+      navigator.clipboard.writeText(text).then(()=>{
+        const orig=btn.textContent;
+        btn.textContent='복사됨 ✓';
+        setTimeout(()=>btn.textContent=orig,1600);
+      }).catch(()=>alert('복사에 실패했습니다.'));
+    });
+  });
+</script>
+</body>
+</html>

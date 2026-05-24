@@ -1,0 +1,7 @@
+{
+  "name": "teacher-generator",
+  "version": "1.0.0",
+  "description": "중고등부 수련회 교사용 AI 생성기 — Google Gemini",
+  "private": true,
+  "type": "module"
+}
