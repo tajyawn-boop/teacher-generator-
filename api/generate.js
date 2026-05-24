@@ -23,7 +23,7 @@ async function callModel(model, apiKey, prompt) {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.8,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
         responseMimeType: "application/json"
       }
     })
