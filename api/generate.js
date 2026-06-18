@@ -14,11 +14,11 @@ const MODEL_CANDIDATES = [
 async function callModel(model, apiKey, prompt) {
   const url =
     "https://generativelanguage.googleapis.com/v1beta/models/" +
-    model + ":generateContent?key=" + apiKey;
+    model + ":generateContent";
 
   const r = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
@@ -33,6 +33,8 @@ async function callModel(model, apiKey, prompt) {
   try { body = await r.json(); } catch (_) { body = null; }
   return { status: r.status, ok: r.ok, body: body };
 }
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -71,13 +73,27 @@ export default async function handler(req, res) {
     let lastError = "";
 
     for (const model of models) {
-      let attempt;
-      try {
-        attempt = await callModel(model, apiKey, prompt);
-      } catch (e) {
-        lastError = "네트워크 오류: " + (e && e.message ? e.message : "");
-        continue;
+      let attempt = null;
+
+      // 같은 모델로 최대 3회 재시도 (503 과부하·429·500 같은 일시 오류 대응)
+      for (let tryN = 0; tryN < 3; tryN++) {
+        try {
+          attempt = await callModel(model, apiKey, prompt);
+        } catch (e) {
+          lastError = "네트워크 오류: " + (e && e.message ? e.message : "");
+          attempt = null;
+          await sleep(500 * (tryN + 1));
+          continue;
+        }
+        // 일시적 오류면 잠깐 쉬고 같은 모델 재시도
+        if (attempt.status === 503 || attempt.status === 429 || attempt.status === 500) {
+          await sleep(600 * (tryN + 1));
+          continue;
+        }
+        break; // 성공이거나, 재시도해도 소용없는 오류 → 루프 종료
       }
+
+      if (!attempt) { continue; } // 네트워크 실패 → 다음 모델
 
       if (attempt.status === 429) {
         rateLimited = true;
